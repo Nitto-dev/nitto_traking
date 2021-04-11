@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:location/location.dart';
@@ -19,12 +20,14 @@ class MapPage extends StatefulWidget {
 
 class MapPageState extends State<MapPage> with AutomaticKeepAliveClientMixin {
   Completer<GoogleMapController> _controller = Completer();
+  Completer mapCompleter=Completer();
   Set<Marker> _markers = Set<Marker>();
 // for my drawn routes on the map
   Set<Polyline> _polylines = Set<Polyline>();
   List<LatLng> polylineCoordinates = [];
   PolylinePoints polylinePoints;
-  String googleAPIKey = 'AIzaSyDIKeTa2WxTGLDIM0cMMmTga4MLaXFcujE';
+  Position _position;
+  String googleAPIKey = 'AIzaSyAdmssGjJ5i8mJ1iylBZfPma5L0QtZoz_E';
 // for my custom marker pins
   BitmapDescriptor sourceIcon;
   BitmapDescriptor destinationIcon;
@@ -50,6 +53,12 @@ class MapPageState extends State<MapPage> with AutomaticKeepAliveClientMixin {
     super.initState();
 
     // create an instance of Location
+    _determinePosition().then((value) {
+      setState(() {
+        _position=value;
+      });
+    });
+
     location = new Location();
     polylinePoints = PolylinePoints();
 
@@ -59,16 +68,52 @@ class MapPageState extends State<MapPage> with AutomaticKeepAliveClientMixin {
       // cLoc contains the lat and long of the
       // current user's position in real time,
       // so we're holding on to it
-
+      print(cLoc.longitude);
       currentLocation = cLoc;
       updatePinOnMap(cLoc.latitude,cLoc.longitude);
     });
     // set custom marker pins
     setSourceAndDestinationIcons();
     // set the initial location
-    setInitialLocation();
+    //setInitialLocation();
   }
+  Future<Position> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
 
+    // Test if location services are enabled.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // Location services are not enabled don't continue
+      // accessing the position and request users of the
+      // App to enable the location services.
+      return Future.error('Location services are disabled.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.deniedForever) {
+        // Permissions are denied forever, handle appropriately.
+        return Future.error(
+            'Location permissions are permanently denied, we cannot request permissions.');
+      }
+
+      if (permission == LocationPermission.denied) {
+        // Permissions are denied, next time you could try
+        // requesting permissions again (this is also where
+        // Android's shouldShowRequestPermissionRationale
+        // returned true. According to Android guidelines
+        // your App should show an explanatory UI now.
+        return Future.error(
+            'Location permissions are denied');
+      }
+    }
+
+    // When we reach here, permissions are granted and we can
+    // continue accessing the position of the device.
+    return await Geolocator.getCurrentPosition();
+  }
   void setSourceAndDestinationIcons() async {
     BitmapDescriptor.fromAssetImage(
         ImageConfiguration(devicePixelRatio: 2.0), 'assets/driving_pin.png')
@@ -105,7 +150,7 @@ class MapPageState extends State<MapPage> with AutomaticKeepAliveClientMixin {
         target: SOURCE_LOCATION);
     if (currentLocation != null) {
       initialCameraPosition = CameraPosition(
-          target: LatLng(currentLocation.latitude, currentLocation.longitude),
+          target: LatLng(_position.latitude, _position.longitude),
           zoom: CAMERA_ZOOM,
           tilt: CAMERA_TILT,
           bearing: CAMERA_BEARING);
@@ -126,7 +171,11 @@ class MapPageState extends State<MapPage> with AutomaticKeepAliveClientMixin {
               },
               onMapCreated: (GoogleMapController controller) {
                 controller.setMapStyle(Utils.mapStyles);
-                _controller.complete(controller);
+                //_controller.complete(controller);
+                if (!mapCompleter.isCompleted) {
+                  mapCompleter.complete(controller);
+                  //qmapController = controller;
+                }
                 // my map has completed being created;
                 // i'm ready to show the pins on the map
                 showPinsOnMap();
@@ -143,21 +192,21 @@ class MapPageState extends State<MapPage> with AutomaticKeepAliveClientMixin {
     // get a LatLng for the source location
     // from the LocationData currentLocation object
     var pinPosition =
-    LatLng(currentLocation.latitude, currentLocation.longitude);
+    LatLng(_position.latitude, _position.longitude);
     // get a LatLng out of the LocationData object
     var destPosition =
     LatLng(destinationLocation.latitude, destinationLocation.longitude);
 
     sourcePinInfo = PinInformation(
         locationName: "Start Location",
-        location: SOURCE_LOCATION,
+        location: pinPosition,
         pinPath: "assets/driving_pin.png",
         avatarPath: "assets/friend1.jpg",
         labelColor: Colors.blueAccent);
 
     destinationPinInfo = PinInformation(
         locationName: "End Location",
-        location: DEST_LOCATION,
+        location: destPosition,
         pinPath: "assets/destination_map_marker.png",
         avatarPath: "assets/friend2.jpg",
         labelColor: Colors.purple);
@@ -192,8 +241,8 @@ class MapPageState extends State<MapPage> with AutomaticKeepAliveClientMixin {
   void setPolylines() async {
     PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
         googleAPIKey,
-        PointLatLng(currentLocation.latitude,  currentLocation.longitude),
-        PointLatLng(destinationLocation.latitude,destinationLocation.longitude),
+        PointLatLng(_position.latitude,  _position.longitude),
+        PointLatLng(currentLocation.latitude,currentLocation.longitude),
         travelMode: TravelMode.walking,
         wayPoints: [PolylineWayPoint(location: "Dhaka")]
     );
