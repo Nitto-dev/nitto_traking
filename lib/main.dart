@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nice_button/NiceButton.dart';
 import 'package:nitto_traking/screen/map_activity.dart';
+import 'package:nitto_traking/screen/show_list_land.dart';
 
 void main() {
   runApp(MyApp());
@@ -73,7 +74,7 @@ class _MyHomePageState extends State<MyHomePage> {
               text: "Show Tracking",
               icon: Icons.show_chart,
               gradientColors: [secondColor, firstColor],
-              onPressed: () {},
+              onPressed: ()=>Navigator.of(context).push(MaterialPageRoute(builder: (context)=>LandList())),
             )
           ],
         ),

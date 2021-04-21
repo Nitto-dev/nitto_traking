@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geolocator/geolocator.dart';
@@ -6,6 +7,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:location/location.dart';
 import 'package:nitto_traking/components/map_pin_pill.dart';
+import 'package:nitto_traking/dbHandaler/dbSingleton.dart';
+import 'package:nitto_traking/models/land_list_model.dart';
 import 'package:nitto_traking/models/pin_pill_info.dart';
 
 const double CAMERA_ZOOM = 16;
@@ -19,6 +22,13 @@ class MapPage extends StatefulWidget {
 }
 
 class MapPageState extends State<MapPage> with AutomaticKeepAliveClientMixin {
+  bool isStart=false;
+  LatLng _startLocation,_endLocation;
+  List<LatLng>_point=[];
+
+  TextEditingController _nameController=new TextEditingController();
+  TextEditingController _addressController=new TextEditingController();
+
   Completer<GoogleMapController> _controller = Completer();
   Completer mapCompleter=Completer();
   Set<Marker> _markers = Set<Marker>();
@@ -56,6 +66,7 @@ class MapPageState extends State<MapPage> with AutomaticKeepAliveClientMixin {
     _determinePosition().then((value) {
       setState(() {
         _position=value;
+        print('location:'+_position.longitude.toString());
       });
     });
 
@@ -68,7 +79,10 @@ class MapPageState extends State<MapPage> with AutomaticKeepAliveClientMixin {
       // cLoc contains the lat and long of the
       // current user's position in real time,
       // so we're holding on to it
-      print(cLoc.longitude);
+      //print(cLoc.longitude);
+      /*setState(() {
+        polylineCoordinates.add(LatLng(cLoc.latitude, cLoc.longitude));
+      });*/
       currentLocation = cLoc;
       updatePinOnMap(cLoc.latitude,cLoc.longitude);
     });
@@ -182,7 +196,96 @@ class MapPageState extends State<MapPage> with AutomaticKeepAliveClientMixin {
               }),
           MapPinPillComponent(
               pinPillPosition: pinPillPosition,
-              currentlySelectedPin: currentlySelectedPin)
+              currentlySelectedPin: currentlySelectedPin),
+          !isStart?Padding(
+            padding: const EdgeInsets.only(bottom: 50,left: 10),
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: Container(
+                width: 180,
+                child: OutlinedButton(
+                  onPressed: (){
+                    setState(() {
+                      isStart=true;
+                      _startLocation=LatLng(currentLocation.latitude, currentLocation.longitude);
+                      _point.add(LatLng(currentLocation.latitude, currentLocation.longitude));
+                    });
+                  },
+                  style: ButtonStyle(
+                    shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(30.0),)),
+                  ),
+                  child: Row(
+                    children: [
+                      Text('Start Navigate',style: TextStyle(fontWeight: FontWeight.w500,fontSize: 18,color: Colors.red),),
+                      Icon(
+                        Icons.navigation_outlined,
+                        color: Colors.green,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            ),
+          ):Text(''),
+          isStart?Padding(
+            padding: EdgeInsets.only(right: 10,bottom: 50),
+            child: Align(
+              alignment: Alignment.bottomRight,
+              child: Container(
+                height: 200,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 120,
+                    child: OutlinedButton(
+                      onPressed: (){
+                        setState(() {
+                          _point.add(LatLng(currentLocation.latitude,currentLocation.latitude));
+                        });
+                      },
+                      style: ButtonStyle(
+                        shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(30.0),)),
+                      ),
+                      child: Row(
+                        children: [
+                          Text('Next',style: TextStyle(fontWeight: FontWeight.w500,fontSize: 18,color: Colors.green),),
+                          Icon(
+                            Icons.next_plan_outlined,
+                            color: Colors.green,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 120,
+                    child: OutlinedButton(
+                      onPressed: (){
+                        setState(() {
+                          _point.add(LatLng(currentLocation.latitude, currentLocation.longitude));
+                          _endLocation=LatLng(currentLocation.latitude, currentLocation.longitude);
+                        });
+                        singleTextAlertDailog(context);
+                      },
+                      style: ButtonStyle(
+                        shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(30.0),)),
+                      ),
+                      child: Row(
+                        children: [
+                          Text('Finish',style: TextStyle(fontWeight: FontWeight.w500,fontSize: 18,color: Colors.cyan),),
+                          Icon(
+                            Icons.navigation_outlined,
+                            color: Colors.green,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                ],
+          ),
+              ),
+            ),):Text('')
         ],
       ),
     );
@@ -191,11 +294,13 @@ class MapPageState extends State<MapPage> with AutomaticKeepAliveClientMixin {
   void showPinsOnMap() {
     // get a LatLng for the source location
     // from the LocationData currentLocation object
-    var pinPosition =
-    LatLng(_position.latitude, _position.longitude);
+    var pinPosition;
+    if(_position!=null){
+      pinPosition=LatLng(_position.latitude, _position.longitude);
+    }
+
     // get a LatLng out of the LocationData object
-    var destPosition =
-    LatLng(destinationLocation.latitude, destinationLocation.longitude);
+    var destPosition=LatLng(destinationLocation.latitude, destinationLocation.longitude);
 
     sourcePinInfo = PinInformation(
         locationName: "Start Location",
@@ -301,6 +406,135 @@ class MapPageState extends State<MapPage> with AutomaticKeepAliveClientMixin {
   @override
   // TODO: implement wantKeepAlive
   bool get wantKeepAlive => true;
+
+  singleTextAlertDailog(BuildContext context){
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10.0))),
+          title: Center(child: Text("Save Land",style: TextStyle(fontWeight: FontWeight.w600),),),
+          content: Container(
+            height: 200,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                TextFormField(
+                  //decoration: new InputDecoration(labelText: "Enter your number"),
+                  //keyboardType: TextInputType.multiline,
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    labelText: "Enter Land Name",
+                    labelStyle: TextStyle(color: Colors.black,fontWeight: FontWeight.w400),
+                    fillColor: Colors.white,
+                    hintText: "Land Name",
+                    //hintStyle: TextStyle(fontSize: 15,fontWeight: FontWeight.w300),
+                    /*suffixIcon: IconButton(
+                    icon: Icon(Icons.clear),
+                    onPressed: (){
+                      setState(() {
+                        _checkTypeController.clear();
+                      });
+                    },
+                  ),*/
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(7.0),
+                      borderSide: BorderSide(
+                          color:Colors.cyan,
+                          width: 2
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(7.0),
+                      borderSide: BorderSide(
+                        color: Colors.cyan,
+                        width: 2.0,
+                      ),
+                    ),
+                  ),
+                  validator: (text) =>
+                  text == null && text.isEmpty
+                      ? 'Cheque Type is not empty'
+                      : text,
+                  onChanged: (value){
+                    /*setState(() {
+                    _chequeType=value;
+                  });*/
+                  }, // Only numbers can be entered
+                ),
+                SizedBox(height: 10,),
+                TextFormField(
+                  controller: _addressController,
+                  decoration: InputDecoration(
+                    labelText: "Enter Address",
+                    labelStyle: TextStyle(color: Colors.black,fontWeight: FontWeight.w400),
+                    fillColor: Colors.white,
+                    hintText: "Address",
+                    //hintStyle: TextStyle(fontSize: 15,fontWeight: FontWeight.w300),
+                    /*suffixIcon: IconButton(
+                    icon: Icon(Icons.clear),
+                    onPressed: (){
+                      setState(() {
+                        _checkTypeController.clear();
+                      });
+                    },
+                  ),*/
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(7.0),
+                      borderSide: BorderSide(
+                          color:Colors.cyan,
+                          width: 2
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(7.0),
+                      borderSide: BorderSide(
+                        color: Colors.cyan,
+                        width: 2.0,
+                      ),
+                    ),
+                  ),
+                  validator: (text) =>
+                  text == null && text.isEmpty
+                      ? 'Cheque Type is not empty'
+                      : text,
+                  onChanged: (value){
+                    /*setState(() {
+                    _chequeType=value;
+                  });*/
+                  }, // Only numbers can be entered
+                )
+              ],
+            ),
+          ),
+          actions: [
+            Padding(
+              padding: EdgeInsets.only(right: 100),
+              child:  RaisedButton(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(7.0),
+                    side: BorderSide(color: Colors.cyan)),
+                onPressed: () async{
+                  Map<String,dynamic>_task={
+                    'landName':_nameController.text,
+                    'address':_addressController.text,
+                    'startPoint':_startLocation,
+                    'endPoint':_endLocation,
+                    'point':_point
+                  };
+                  //await DBProvider.db.insertNotification(LandListModel.fromJson(_task));
+                  Navigator.of(context).pop();
+                },
+                color: Colors.cyan,
+                textColor: Colors.white,
+                child: Text("Save".toUpperCase(),
+                    style: TextStyle(fontSize: 15,fontWeight: FontWeight.w400)),
+              ),)
+          ],
+        );
+      },
+    );
+  }
 }
 
 class Utils {

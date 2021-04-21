@@ -33,6 +33,8 @@ dependencies:
   location: ^4.1.1
   flutter_polyline_points: ^0.2.4
   nice_button: ^0.1.7
+  sqflite: ^2.0.0+3
+  path_provider: ^2.0.1
 
 dev_dependencies:
   flutter_test:
