@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "921441156236",
+    "project_id": "nittotracking",
+    "storage_bucket": "nittotracking.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:921441156236:android:a7a76eb77c65d2b11d0fa9",
+        "android_client_info": {
+          "package_name": "com.nittodigital.nittotraking"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "921441156236-hcs3dppgodce5a4ekje41tveikjepnv0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBd1L4djJEAwfsaHgtEFK6ctcZDIZm9ZHg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "921441156236-hcs3dppgodce5a4ekje41tveikjepnv0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
